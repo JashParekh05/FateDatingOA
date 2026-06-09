@@ -1,0 +1,9 @@
+.env
+clips/
+output/
+processed.json
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
