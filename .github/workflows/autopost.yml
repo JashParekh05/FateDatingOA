@@ -1,0 +1,51 @@
+name: Auto-post to TikTok
+
+on:
+  schedule:
+    # Two videos a day, 11:00 and 19:00 UTC. Adjust to your audience's timezone.
+    - cron: "0 11,19 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate and post one video
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+          TIKTOK_REFRESH_TOKEN: ${{ secrets.TIKTOK_REFRESH_TOKEN }}
+          TIKTOK_PRIVACY_LEVEL: ${{ vars.TIKTOK_PRIVACY_LEVEL || 'SELF_ONLY' }}
+          NICHE: ${{ vars.NICHE || 'mind-blowing true facts about history, nature, and science' }}
+        run: python run.py auto
+
+      # Runners are ephemeral — commit the post history back so the next run
+      # knows what's already been posted and which topics are used up.
+      - name: Persist post history
+        if: always()
+        run: |
+          git config user.name "cliptales-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f processed.json
+          git diff --cached --quiet || { git commit -m "Update post history [skip ci]"; git push; }
