@@ -34,6 +34,18 @@ TTS_VOICE = os.environ.get("TTS_VOICE", "en-US-GuyNeural")
 TTS_RATE = os.environ.get("TTS_RATE", "+10%")
 ORIGINAL_AUDIO_VOLUME = float(os.environ.get("ORIGINAL_AUDIO_VOLUME", "0.25"))
 
+# --- Auto mode (self-sourced content from licensed stock footage) ---
+PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY", "")
+# The niche the channel covers. Specific niches monetize better than random.
+NICHE = os.environ.get(
+    "NICHE",
+    "mind-blowing true facts about history, nature, and science",
+)
+# Creator Rewards only pays on videos over 60 seconds — default safely above.
+TARGET_DURATION_SECONDS = int(os.environ.get("TARGET_DURATION_SECONDS", "75"))
+# Approximate spoken pace used to size scripts (words per second).
+WORDS_PER_SECOND = 2.3
+
 # --- TikTok ---
 TIKTOK_CLIENT_KEY = os.environ.get("TIKTOK_CLIENT_KEY", "")
 TIKTOK_CLIENT_SECRET = os.environ.get("TIKTOK_CLIENT_SECRET", "")

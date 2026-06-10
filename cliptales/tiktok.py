@@ -76,6 +76,8 @@ def upload_video(video: Path, caption: str) -> str:
                 "disable_comment": False,
                 "disable_duet": False,
                 "disable_stitch": False,
+                # TikTok policy requires labeling AI-generated content.
+                "is_aigc": True,
             },
             "source_info": {
                 "source": "FILE_UPLOAD",
@@ -93,27 +95,28 @@ def upload_video(video: Path, caption: str) -> str:
     publish_id = init_data["data"]["publish_id"]
     upload_url = init_data["data"]["upload_url"]
 
+    # Stream chunks from disk instead of loading the whole video into memory.
     with open(video, "rb") as f:
-        data = f.read()
-
-    for i in range(chunk_count):
-        start = i * chunk_size
-        # Final chunk takes everything that's left.
-        end = size - 1 if i == chunk_count - 1 else start + chunk_size - 1
-        resp = requests.put(
-            upload_url,
-            headers={
-                "Content-Type": "video/mp4",
-                "Content-Range": f"bytes {start}-{end}/{size}",
-            },
-            data=data[start : end + 1],
-            timeout=300,
-        )
-        if resp.status_code not in (200, 201, 206):
-            raise TikTokError(
-                f"Chunk {i + 1}/{chunk_count} upload failed "
-                f"({resp.status_code}): {resp.text[:300]}"
+        for i in range(chunk_count):
+            start = i * chunk_size
+            # Final chunk takes everything that's left.
+            end = size - 1 if i == chunk_count - 1 else start + chunk_size - 1
+            f.seek(start)
+            chunk = f.read(end - start + 1)
+            resp = requests.put(
+                upload_url,
+                headers={
+                    "Content-Type": "video/mp4",
+                    "Content-Range": f"bytes {start}-{end}/{size}",
+                },
+                data=chunk,
+                timeout=300,
             )
+            if resp.status_code not in (200, 201, 206):
+                raise TikTokError(
+                    f"Chunk {i + 1}/{chunk_count} upload failed "
+                    f"({resp.status_code}): {resp.text[:300]}"
+                )
 
     _wait_for_publish(token, publish_id)
     return publish_id

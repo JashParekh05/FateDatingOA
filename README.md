@@ -1,127 +1,124 @@
 # ClipTales 🎬
 
-Drop video clips in a folder → AI writes a playful story about them → a voiceover
-gets rendered onto the clip → it posts to TikTok. Fully automated.
+A fully automated faceless TikTok channel. Claude invents a topic in your
+niche, writes a 60–90 second story, picks stock footage scene by scene, the
+pipeline stitches + narrates it, and posts it to TikTok. Zero input per video.
 
 ```
-clips/cat_fail.mp4
+python run.py auto
    │
-   ▼  Claude looks at frames from the clip
-"This cat had ONE job..."        ← story + caption + hashtags
+   ▼  Claude invents the next video in your NICHE
+topic + 75s script + caption + hashtags + scene queries
    │
-   ▼  edge-tts + ffmpeg
-output/cat_fail_narrated.mp4     ← voiceover mixed over the clip
+   ▼  Pexels API (free, licensed for commercial use)
+portrait stock clips, one per scene
    │
-   ▼  TikTok Content Posting API
-posted ✅  (tracked in processed.json, never posts twice)
+   ▼  ffmpeg: 1080x1920 @30fps, fast cuts, TTS narration
+output/auto_20260610_180000.mp4   (61+ seconds — monetization eligible)
+   │
+   ▼  TikTok Content Posting API (labeled as AI-generated)
+posted ✅  topic logged so it's never repeated
 ```
+
+There's also a **folder mode** (`python run.py once`) that narrates clips you
+drop into `clips/` — your own footage monetizes best of all.
+
+## Why this design makes money (and scrapers don't)
+
+TikTok's **Creator Rewards Program** is the direct payout, and it has hard
+rules baked into this pipeline:
+
+| Requirement | How ClipTales handles it |
+|---|---|
+| Videos must be **over 1 minute** | `TARGET_DURATION_SECONDS=75` default; warns if narration lands under 60s |
+| Content must be **original** | The AI story *is* the original work; visuals are licensed stock, not reposts |
+| 10k followers + 100k views/30 days to join | Consistency — autopilot posts on a schedule without you |
+| AI content must be labeled | Posts are flagged `is_aigc` via the API |
+
+Reposting other people's clips fails every one of those rows — repost accounts
+get demonetized/banned, which is why this pipeline doesn't do it. Expect
+roughly **$0.40–$1.00 per 1,000 qualified views** from Creator Rewards once
+you're in. The bigger money long-term is layering on TikTok Shop affiliate
+links and brand deals once the account has an audience in a clear niche.
 
 ## Setup
 
-### 1. System dependencies
-
-You need `ffmpeg` (which includes `ffprobe`):
-
 ```bash
-# macOS
-brew install ffmpeg
-# Ubuntu/Debian
-sudo apt install ffmpeg
-```
+# system: ffmpeg
+brew install ffmpeg          # or: sudo apt install ffmpeg
 
-### 2. Python
-
-```bash
+# python
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # then fill it in
+cp .env.example .env         # then fill in:
 ```
 
-### 3. Anthropic API key
+1. **`ANTHROPIC_API_KEY`** — https://console.anthropic.com
+2. **`PEXELS_API_KEY`** — free at https://www.pexels.com/api/ (auto mode only)
+3. **TikTok developer app** — create one at https://developers.tiktok.com, add
+   the **Content Posting API** product (Direct Post, `video.publish` scope),
+   run the OAuth flow once, and put `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`,
+   `TIKTOK_REFRESH_TOKEN` in `.env`.
 
-Get one at https://console.anthropic.com and put it in `.env` as
-`ANTHROPIC_API_KEY`.
-
-### 4. TikTok developer app (the annoying part)
-
-TikTok only allows automated posting through their official **Content Posting
-API**, so you need a developer app:
-
-1. Create an app at https://developers.tiktok.com
-2. Add the **Content Posting API** product and request the **Direct Post**
-   configuration with the `video.publish` scope.
-3. Run through the OAuth flow once with your TikTok account to get a
-   **refresh token** (TikTok's [Login Kit docs](https://developers.tiktok.com/doc/login-kit-web)
-   walk through it). Put `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, and
-   `TIKTOK_REFRESH_TOKEN` in `.env`. The app refreshes access tokens
-   automatically from there.
-
-> **Important:** until TikTok audits and approves your app, the API forces all
-> posts to **private (SELF_ONLY)** — only you can see them. That's fine for
-> testing the pipeline end-to-end. Apply for the audit in the developer portal
-> when you're ready to post publicly, then set
+> **Until TikTok audits your app, all API posts are forced private
+> (SELF_ONLY).** That's your tuning period: run the pipeline, watch what it
+> makes, adjust `NICHE`/`STORY_STYLE`, then apply for the audit and switch
 > `TIKTOK_PRIVACY_LEVEL=PUBLIC_TO_EVERYONE`.
 
 ## Usage
 
 ```bash
-# Preview the AI story for a clip without rendering or posting
-python run.py story clips/cat_fail.mp4
+python run.py plan      # preview the next topic/script — costs one Claude call, renders nothing
+python run.py auto      # generate + render + post one video
+python run.py watch     # full autopilot, one video per interval (default hourly)
 
-# Process the next pending clip (story -> voiceover -> post) and exit
-python run.py once
-
-# Full autopilot: check the clips folder every hour
-python run.py watch
+python run.py story clips/myclip.mp4   # folder mode: preview a story for your clip
+python run.py once                     # folder mode: narrate + post pending clips
+python run.py watch --folder           # autopilot over your own clips
 ```
 
-Or schedule it with cron instead of watch mode:
+Cron instead of watch mode:
 
 ```bash
-# post one clip every day at 6pm
-0 18 * * * cd /path/to/cliptales && .venv/bin/python run.py once >> cliptales.log 2>&1
+# two videos a day, 11am and 7pm
+0 11,19 * * * cd /path/to/cliptales && .venv/bin/python run.py auto >> cliptales.log 2>&1
 ```
 
-Set `ENABLE_UPLOAD=false` in `.env` to dry-run the whole pipeline (story +
-voiceover render) without posting anything.
+`ENABLE_UPLOAD=false` dry-runs everything (script, footage, render) without
+posting — the rendered video lands in `output/` for you to review.
 
-## Tuning the vibe
+## Reliability features
 
-- `STORY_STYLE` — the personality of the narration. This is the biggest lever
-  for making content feel like *yours* instead of generic AI output.
-- `TTS_VOICE` — any [edge-tts voice](https://github.com/rany2/edge-tts#voice-list),
-  e.g. `en-US-AriaNeural`, `en-GB-RyanNeural`. List them with
-  `edge-tts --list-voices`.
-- `FRAMES_PER_CLIP` — more frames = Claude sees more of the clip (and costs a
-  bit more per story).
-- `MAX_POSTS_PER_RUN` — keep this at 1–2. Spamming posts tanks reach and can
-  get an account flagged.
+- One failing video can't wedge the queue — after 3 attempts an item is
+  skipped and logged in `processed.json` with its error.
+- Stories are cached to disk before upload, so a failed TikTok post never
+  pays for the same Claude call twice.
+- `processed.json` writes are atomic; a corrupt file is quarantined, never
+  silently reset (which would cause re-posting).
+- Credentials are checked at startup, before any money is spent.
+- Files mid-copy into `clips/` are detected and skipped until stable.
 
-## Things to know before chasing the bag 💰
+## Tuning
 
-- **TikTok's rules:** you must own the rights to the clips you post, and
-  TikTok requires AI-generated content to be labeled (there's an AI-generated
-  content toggle on posts; spammy unlabeled AI content is exactly what their
-  moderation targets). Monetization programs (Creator Rewards) also have
-  originality requirements — AI narration over *your own* clips qualifies a
-  lot better than reposted content.
-- **Quality beats volume:** the pipeline can post as fast as you feed it, but
-  the algorithm rewards watch time, not upload count. One good clip a day
-  outperforms ten mediocre ones.
-- **Review before going public:** while your app is in SELF_ONLY mode, watch
-  what it produces. Tune `STORY_STYLE` until the voice is right, *then* apply
-  for the audit.
+- `NICHE` — the single biggest lever. Specific beats broad: "abandoned places
+  and the stories behind them" outperforms "interesting facts".
+- `STORY_STYLE` — narration personality.
+- `TTS_VOICE` — any edge-tts voice (`edge-tts --list-voices`).
+- `MAX_POSTS_PER_RUN` / `WATCH_INTERVAL_SECONDS` — pacing. 1–3 good videos a
+  day beats 10 mediocre ones; the algorithm rewards watch time, not volume.
 
 ## Project layout
 
 ```
 cliptales/
   config.py     # all env-driven settings
-  frames.py     # ffmpeg frame extraction
-  story.py      # Claude vision -> story/caption/hashtags (structured output)
-  voiceover.py  # edge-tts narration mixed over the clip
-  tiktok.py     # Content Posting API: token refresh, chunked upload, status poll
-  state.py      # processed.json bookkeeping
-  pipeline.py   # glue
-run.py          # CLI: once / watch / story
+  story.py      # Claude: clip stories + auto-mode video plans (structured output)
+  sourcing.py   # Pexels stock footage search + download
+  compose.py    # scene normalization (1080x1920@30) + concat to narration length
+  voiceover.py  # edge-tts narration, ducked mix, never truncates video
+  frames.py     # ffmpeg frame extraction + probing
+  tiktok.py     # Content Posting API: token refresh, chunked upload, AIGC label
+  state.py      # atomic processed.json, failure tracking, topic history
+  pipeline.py   # orchestration + preflight checks
+run.py          # CLI: auto / watch / once / plan / story
 ```
