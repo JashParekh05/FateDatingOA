@@ -1,24 +1,12 @@
-"""Claude generation: stories for existing clips, and full video plans for
-auto mode (topic + script + stock-footage queries)."""
+"""Content generation: stories for existing clips, and full video plans for
+auto mode (topic + script + stock-footage queries). Provider-agnostic — see
+llm.py for the Anthropic/Groq switch."""
 
-from functools import lru_cache
 from pathlib import Path
 
-import anthropic
 from pydantic import BaseModel, Field
 
-from . import config, frames
-
-
-@lru_cache(maxsize=1)
-def get_client() -> anthropic.Anthropic:
-    try:
-        return anthropic.Anthropic()
-    except Exception as e:
-        raise RuntimeError(
-            "Could not create the Anthropic client — is ANTHROPIC_API_KEY set "
-            f"in your environment or .env? ({e})"
-        ) from e
+from . import config, frames, llm
 
 
 class StoryPackage(BaseModel):
@@ -69,34 +57,12 @@ def generate_story(video: Path) -> StoryPackage:
     """Look at frames from the clip and return a ready-to-post story package."""
     duration = frames.duration_seconds(video)
     images = frames.frames_as_base64(video, config.FRAMES_PER_CLIP)
-
-    content = []
-    for i, data in enumerate(images):
-        content.append({"type": "text", "text": f"Frame {i + 1}:"})
-        content.append({
-            "type": "image",
-            "source": {"type": "base64", "media_type": "image/jpeg", "data": data},
-        })
-    content.append({
-        "type": "text",
-        "text": (
-            f"The clip is {duration:.0f} seconds long. The story will be read "
-            f"aloud over it, so it must be at most {_word_budget(duration)} "
-            "words — it gets cut off otherwise. Write the story package."
-        ),
-    })
-
-    response = get_client().messages.parse(
-        model=config.ANTHROPIC_MODEL,
-        max_tokens=16000,
-        thinking={"type": "adaptive"},
-        system=CLIP_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": content}],
-        output_format=StoryPackage,
+    prompt = (
+        f"The clip is {duration:.0f} seconds long. The story will be read "
+        f"aloud over it, so it must be at most {_word_budget(duration)} "
+        "words — it gets cut off otherwise. Write the story package."
     )
-    if response.parsed_output is None:
-        raise RuntimeError(f"Claude's story output failed to parse for {video.name}")
-    return response.parsed_output
+    return llm.generate(CLIP_SYSTEM_PROMPT, prompt, StoryPackage, images_b64=images)
 
 
 AUTO_SYSTEM_PROMPT = f"""You are a viral short-form video writer running a \
@@ -125,18 +91,7 @@ def generate_plan(avoid_topics: list[str]) -> VideoPlan:
         "over 60 seconds for monetization, so do not write short).\n\n"
         f"Topics already covered, pick something different:\n{avoid}"
     )
-
-    response = get_client().messages.parse(
-        model=config.ANTHROPIC_MODEL,
-        max_tokens=16000,
-        thinking={"type": "adaptive"},
-        system=AUTO_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
-        output_format=VideoPlan,
-    )
-    if response.parsed_output is None:
-        raise RuntimeError("Claude's video plan failed to parse")
-    return response.parsed_output
+    return llm.generate(AUTO_SYSTEM_PROMPT, prompt, VideoPlan)
 
 
 def full_caption(pkg: StoryPackage) -> str:

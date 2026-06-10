@@ -140,8 +140,13 @@ def preflight() -> None:
     """Fail fast on missing credentials before spending money on generation."""
     import os
     problems = []
-    if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
-        problems.append("ANTHROPIC_API_KEY is not set")
+    if config.LLM_PROVIDER == "groq":
+        if not config.GROQ_API_KEY:
+            problems.append("GROQ_API_KEY is not set (free key: console.groq.com)")
+    elif not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
+        problems.append(
+            "ANTHROPIC_API_KEY is not set (or set LLM_PROVIDER=groq to use Groq)"
+        )
     if config.ENABLE_UPLOAD and not (
         config.TIKTOK_CLIENT_KEY and config.TIKTOK_CLIENT_SECRET and config.TIKTOK_REFRESH_TOKEN
     ):

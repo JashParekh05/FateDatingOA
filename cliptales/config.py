@@ -16,9 +16,22 @@ STATE_FILE = Path(os.environ.get("STATE_FILE", ROOT / "processed.json"))
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
 
-# --- Anthropic ---
+# --- LLM provider ---
+# "anthropic" (best writing quality, ~1-2 cents/video) or "groq" (free tier).
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "anthropic").lower()
+
+# --- Anthropic (story generation) ---
 # ANTHROPIC_API_KEY is read by the SDK directly from the environment.
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-8")
+
+# --- Groq (free-tier alternative) ---
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+# Vision-capable model, used by folder mode to look at clip frames.
+GROQ_VISION_MODEL = os.environ.get(
+    "GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"
+)
+
 FRAMES_PER_CLIP = int(os.environ.get("FRAMES_PER_CLIP", "6"))
 
 # Persona/vibe for the generated stories. Tweak freely.
