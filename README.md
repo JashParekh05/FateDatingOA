@@ -84,6 +84,17 @@ Cron instead of watch mode:
 0 11,19 * * * cd /path/to/cliptales && .venv/bin/python run.py auto >> cliptales.log 2>&1
 ```
 
+### Zero-infrastructure: GitHub Actions
+
+`.github/workflows/autopost.yml` posts twice a day from GitHub's free runners —
+no machine of yours needs to stay on. Add these as **repo secrets**
+(Settings → Secrets and variables → Actions): `ANTHROPIC_API_KEY`,
+`PEXELS_API_KEY`, `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`,
+`TIKTOK_REFRESH_TOKEN`. Optionally set `TIKTOK_PRIVACY_LEVEL` and `NICHE` as
+repo **variables**. Post history (`processed.json`) is committed back to the
+repo after each run so topics never repeat. Trigger a test run manually from
+the Actions tab ("Run workflow").
+
 `ENABLE_UPLOAD=false` dry-runs everything (script, footage, render) without
 posting — the rendered video lands in `output/` for you to review.
 
