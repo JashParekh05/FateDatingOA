@@ -17,10 +17,16 @@ STATE_FILE = Path(os.environ.get("STATE_FILE", ROOT / "processed.json"))
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".avi"}
 
 # --- LLM provider ---
-# "anthropic" (best writing quality, ~1-2 cents/video) or "groq" (free tier).
-LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "anthropic").lower()
+# "openai" (default), "anthropic", or "groq" (free tier).
+LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "openai").lower()
 
-# --- Anthropic (story generation) ---
+# --- OpenAI ---
+# OPENAI_API_KEY is read by the SDK directly from the environment.
+# gpt-4o is a safe default with vision + structured outputs; set whatever
+# model your account uses (e.g. gpt-4.1, gpt-5-mini).
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
+
+# --- Anthropic ---
 # ANTHROPIC_API_KEY is read by the SDK directly from the environment.
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-4-8")
 
@@ -40,6 +46,12 @@ STORY_STYLE = os.environ.get(
     "playful, witty, slightly absurd internet humor — like a friend narrating "
     "the clip with way too much enthusiasm",
 )
+
+# --- Monetization funnel ---
+# Appended to every caption. Until you hit Creator Rewards thresholds (10k
+# followers), the follow CTA is the funnel; once you have a product or
+# affiliate link in bio, switch it to e.g. "Full guide in bio 🔗".
+CAPTION_CTA = os.environ.get("CAPTION_CTA", "Follow for one of these every day 🧠")
 
 # --- Voiceover ---
 ENABLE_VOICEOVER = os.environ.get("ENABLE_VOICEOVER", "true").lower() == "true"
