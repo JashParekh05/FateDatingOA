@@ -53,7 +53,7 @@ pip install -r requirements.txt
 cp .env.example .env         # then fill in:
 ```
 
-1. **`ANTHROPIC_API_KEY`** — https://console.anthropic.com
+1. **`OPENAI_API_KEY`** — uses your existing OpenAI account (`OPENAI_MODEL` defaults to gpt-4o; Anthropic/Groq also supported via `LLM_PROVIDER`)
 2. **`PEXELS_API_KEY`** — free at https://www.pexels.com/api/ (auto mode only)
 3. **TikTok developer app** — create one at https://developers.tiktok.com, add
    the **Content Posting API** product (Direct Post, `video.publish` scope),
@@ -88,7 +88,7 @@ Cron instead of watch mode:
 
 `.github/workflows/autopost.yml` posts twice a day from GitHub's free runners —
 no machine of yours needs to stay on. Add these as **repo secrets**
-(Settings → Secrets and variables → Actions): `ANTHROPIC_API_KEY`,
+(Settings → Secrets and variables → Actions): `OPENAI_API_KEY`,
 `PEXELS_API_KEY`, `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`,
 `TIKTOK_REFRESH_TOKEN`. Optionally set `TIKTOK_PRIVACY_LEVEL` and `NICHE` as
 repo **variables**. Post history (`processed.json`) is committed back to the
@@ -123,7 +123,8 @@ posting — the rendered video lands in `output/` for you to review.
 ```
 cliptales/
   config.py     # all env-driven settings
-  story.py      # Claude: clip stories + auto-mode video plans (structured output)
+  story.py      # clip stories + auto-mode video plans (structured output)
+  llm.py        # provider switch: OpenAI (default) / Anthropic / Groq
   sourcing.py   # Pexels stock footage search + download
   compose.py    # scene normalization (1080x1920@30) + concat to narration length
   voiceover.py  # edge-tts narration, ducked mix, never truncates video

@@ -74,7 +74,12 @@ Style: {config.STORY_STYLE}
 
 Rules:
 - The story must be TRUE and verifiable — fabricated facts kill channels.
-- First sentence is the hook; end with a detail that rewards watching fully.
+- Teach something: the viewer should leave knowing a thing they'll repeat to
+  a friend. Educational content is advertiser-friendly and evergreen.
+- First sentence is the hook; the punchline detail comes in the FINAL
+  sentence so viewers watch to the end (watch-through drives payouts).
+- After the punchline, close with ONE short natural follow hook (e.g.
+  "Follow — tomorrow's is wilder.").
 - scene_queries must be concrete and visual; stock sites have no footage of
   abstract ideas.
 - Keep it clean enough for TikTok's content rules.
@@ -95,6 +100,7 @@ def generate_plan(avoid_topics: list[str]) -> VideoPlan:
 
 
 def full_caption(pkg: StoryPackage) -> str:
-    """Caption + hashtags as posted to TikTok (capped at TikTok's 2200 chars)."""
+    """Caption + CTA + hashtags as posted (capped at TikTok's 2200 chars)."""
     tags = " ".join(f"#{t.lstrip('#')}" for t in pkg.hashtags)
-    return f"{pkg.caption} {tags}"[:2200]
+    cta = f" {config.CAPTION_CTA}" if config.CAPTION_CTA else ""
+    return f"{pkg.caption}{cta} {tags}"[:2200]
